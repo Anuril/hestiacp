@@ -66,6 +66,27 @@ check_result $? "$HOST connection failed" "$E_CONNECT"
 
 cluster_cmd v-add-dns-transfer-key "$tmp_file" "transferkeys.conf" $host $ip
 
+# Allow transfer to new hosts' IP
+# by removing the none; from allow-transfer { none; }; from the config
+# and adding $ip; to the config. if none can't be found, just add $ip.
+temp_config_file=$(mktemp)
+
+if grep -q 'allow-transfer' "$dns_conf"; then
+    # If "none" is present, replace it with $ip
+    sed -i "/allow-transfer/ s/\"none\";/$ip;/" "$dns_conf"
+    
+    # If "none" wasn't present and there are other IPs, append $ip
+    if ! grep -q "$ip" "$dns_conf"; then
+        sed -i "/allow-transfer/ s/};/$ip; };/g" "$dns_conf"
+    fi
+else
+    # If allow-transfer is missing, add it before the closing };
+    awk -v ip="$ip" '/^};/ {print "        allow-transfer { "ip"; };"}1' "$dns_conf" > "$temp_config_file"
+    mv "$temp_config_file" "$dns_conf"
+fi
+
+
+
 #----------------------------------------------------------#
 #                       Hestia                             #
 #----------------------------------------------------------#
