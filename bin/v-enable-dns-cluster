@@ -1,6 +1,6 @@
 #!/bin/bash
 # info: create initial DNS Cluster configuration
-# options: PRIMARY_HOST PRIMARY_IP SECONDARY_HOST SECONDARY_IP 
+# options: PRIMARY_HOST PRIMARY_IP SECONDARY_HOST SECONDARY_IP
 #
 # example: v-add-remote-dns-host slave.your_host.com 8083 admin your_passw0rd
 #

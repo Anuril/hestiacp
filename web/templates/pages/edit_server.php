@@ -11,6 +11,9 @@
 			<a href="/edit/server/whitelabel/" class="button button-secondary">
 				<i class="fas fa-paint-brush icon-blue"></i><?= _("White Label") ?>
 			</a>
+			<a href="/edit/server/cluster/" class="button button-secondary">
+				<i class="fas fa-circle-nodes icon-blue"></i><?= _("Cluster") ?>
+			</a>
 		</div>
 		<div class="toolbar-buttons">
 			<button type="submit" class="button" form="main-form">

@@ -1,0 +1,129 @@
+#!/bin/bash
+# info: add cluster configuration on secondary node
+# options: NODE_FILE CLUSTER_HASH
+#
+# example: v-create-hestia-cluster
+#
+# This function adds remote dns server to the dns cluster.
+# As alternative api_key generated on the slave server.
+# See v-generate-api-key can be used to connect the remote dns server
+
+#----------------------------------------------------------#
+#                Variables & Functions                     #
+#----------------------------------------------------------#
+
+# Argument definition
+node_file=$1
+cluster_hash=$2
+
+
+# Includes
+# shellcheck source=/etc/hestiacp/hestia.conf
+source /etc/hestiacp/hestia.conf
+# shellcheck source=/usr/local/hestia/func/main.sh
+source $HESTIA/func/main.sh
+# shellcheck source=/usr/local/hestia/func/remote.sh
+source $HESTIA/func/remote.sh
+# load config file
+source_conf "$HESTIA/conf/hestia.conf"
+
+
+#----------------------------------------------------------#
+#                    Verifications                         #
+#----------------------------------------------------------#
+
+# Check if there is already a cluster set up on the server
+if [ -e "$HESTIA/conf/cluster.conf" ]; then
+	echo "Cluster already configured"
+	log_event "$E_INVALID" "$ARGUMENTS"
+	exit
+fi
+
+# Check if there is already a list of cluster nodes set up on the server
+if [ -e "$HESTIA/conf/cluster-nodes.conf" ]; then
+	echo "Cluster nodes already configured"
+	log_event "$E_INVALID" "$ARGUMENTS"
+	exit
+fi
+
+args_usage='PRIMARY_HOST PRIMARY_IP PRIMARY_PORT CLUSTER_HASH'
+check_args '3' "$#" "$args_usage"
+is_fqdn_valid $PRIMARY_HOST
+is_ip_valid $PRIMARY_IP
+
+#----------------------------------------------------------#
+#                       Action                             #
+#----------------------------------------------------------#
+
+# Create cluster configuration file
+echo "CLUSTER_HASH='$CLUSTER_HASH'" >> $HESTIA/conf/cluster.conf
+echo "PRIMARY_HOST='$PRIMARY_HOST'" > $HESTIA/conf/cluster.conf
+echo "PRIMARY_IP='$PRIMARY_IP'" >> $HESTIA/conf/cluster.conf
+echo "PRIMARY_PORT='$PRIMARY_PORT'" >> $HESTIA/conf/cluster.conf
+echo "FN_CLUSTER='yes'" >> $HESTIA/conf/cluster.conf
+
+
+if [ -e "$node_file" ]; then
+	mv -f "$HESTIA/conf/cluster-nodes.conf" "$HESTIA/conf/cluster-nodes.conf.old"
+	mv -f "$node_file" "$HESTIA/conf/cluster-nodes.conf"
+	chmod 660 "$HESTIA/conf/cluster-nodes.conf"
+fi
+
+# Create cluster user
+cluster_user_pw = $(openssl rand -base64 32 | tr -d '\n')
+cluster_domain = $(hostname -f | cut -d. -f2-)
+cluster_user="cluster-$cluster_hash"
+
+$BIN/v-add-user "$cluster_user" "$cluster_user_pw" "$cluster_hash@$cluster_domain" "system"
+
+# Clear cluster user password
+unset $cluster_user_pw
+
+# Change user role to administrator
+$BIN/v-change-user-role "$cluster_user" "administrator"
+
+# Add api key to cluster user
+HASH=$($BIN/v-add-access-key "$cluster_user")
+
+# Get hestia port by reading nginx.conf
+hestiaport=$(sed -ne "/listen/{s/.*listen[^0-9]*\([0-9][0-9]*\)[ \t]*ssl\;/\1/p;q}" "$HESTIA/nginx/conf/nginx.conf")
+if [ -z "$hestiaport" ]; then
+	hestiaport=8083
+fi
+SECONDARY_HOST=$(hostname)
+SECONDARY_IP=$(hostname -i)
+SECONDARY_PORT=$hestiaport
+
+# Generating timestamp
+time_n_date=$(date +'%T %F')
+time=$(echo "$time_n_date" | cut -f 1 -d \ )
+date=$(echo "$time_n_date" | cut -f 2 -d \ )
+
+# Concatentating secondary host string
+str="HOST='$SECONDARY_HOST' IP='$SECONDARY_IP' PORT='$SECONDARY_PORT' USER='$cluster_user' APIKEY='$HASH'"
+str="$str TYPE='$TYPE' SUSPENDED='no'"
+str="$str TIME='$time' DATE='$date' ROLE='secondary'"
+
+# Adding host to cluster-nodes.conf
+echo "$str" >> $HESTIA/conf/cluster-nodes.conf
+chmod 660 $HESTIA/conf/cluster-nodes.conf
+
+tmp_file="/tmp/vst-sync.cluster-nodes.conf"
+cluster_file "$HESTIA/conf/cluster-nodes.conf" "$tmp_file"
+cluster_cmd v-register-secondary-node $tmp_file $cluster_hash
+
+#----------------------------------------------------------#
+#                       Hestia                             #
+#----------------------------------------------------------#
+
+# Adding local hestia-cluster cron job
+cmd="sudo $BIN/v-update-sys-queue hestia-cluster"
+check_cron=$(grep "$cmd" $HESTIA/data/users/admin/cron.conf 2> /dev/null)
+if [ -z "$check_cron" ] && [ ! -z "$CRON_SYSTEM" ]; then
+	$BIN/v-add-cron-job admin '*/5' '*' '*' '*' '*' "$cmd"
+fi
+
+# Logging
+log_event "$OK" "$ARGUMENTS"
+
+exit

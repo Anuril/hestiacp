@@ -1,0 +1,25 @@
+#!/bin/bash
+# info: register secondary node
+# options:
+#
+# example: v-register-secondary-node
+#
+# This function adds remote dns server to the dns cluster.
+# As alternative api_key generated on the slave server.
+# See v-generate-api-key can be used to connect the remote dns server
+
+#----------------------------------------------------------#
+#                Variables & Functions                     #
+#----------------------------------------------------------#
+
+# Argument definition
+
+# Argument definition
+node_file=$1
+cluster_hash=$2
+# Insert values
+if [ -e "$node_file" ]; then
+	mv -f "$HESTIA/conf/cluster-nodes.conf" "$HESTIA/conf/cluster-nodes.conf.old"
+	mv -f "$node_file" "$HESTIA/conf/cluster-nodes.conf"
+	chmod 660 "$HESTIA/conf/cluster-nodes.conf"
+fi

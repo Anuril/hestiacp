@@ -1280,6 +1280,25 @@ is_secret_access_key_format_valid() {
 	fi
 }
 
+# FQDN validator
+is_fqdn_valid() {
+    local fqdn="$1"
+    # regex for a simple FQDN validation
+    if ! [[ "$fqdn" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](\.[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9])+$ ]]; then
+        check_result "$E_INVALID" "Invalid FQDN format :: $fqdn"
+    fi
+}
+
+# IPv4 validator
+is_ipv4_valid() {
+    local ip="$1"
+    # regex for IPv4
+    if ! [[ "$ip" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
+        check_result "$E_INVALID" "Invalid IPv4 format :: $ip"
+    fi
+}
+
+
 # Checks if the secret belongs to the access key
 check_access_key_secret() {
 	local access_key_id="$(basename "$1")"

@@ -51,6 +51,7 @@ case $queue in
 	daily) bash $HESTIA/data/queue/$queue.pipe > /dev/null 2>&1 ;;
 	traffic) bash $HESTIA/data/queue/$queue.pipe > /dev/null 2>&1 ;;
 	dns-cluster) bash $HESTIA/data/queue/$queue.pipe > /dev/null 2>&1 ;;
+	hestia-cluster) bash $HESTIA/data/queue/$queue.pipe > /dev/null 2>&1 ;;
 	letsencrypt) bash $HESTIA/data/queue/$queue.pipe > /dev/null 2>&1 ;;
 	*) check_args '1' '0' 'QUEUE' ;;
 esac

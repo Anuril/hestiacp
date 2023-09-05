@@ -194,3 +194,18 @@ clear_dns_cluster_settings() {
 	unset PASSWORD
 	unset HASH
 }
+
+check_ssl_connectivity() {
+    local ip=$1
+    local port=$2
+
+    wget --spider --no-check-certificate --timeout=5 https://$ip:$port &>/dev/null
+
+    if [ $? -eq 0 ]; then
+        echo "Server is answering with SSL on $ip:$port"
+        return 0
+    else
+        echo "Server is NOT answering with SSL on $ip:$port"
+        return 1
+    fi
+}
